@@ -1,6 +1,7 @@
 package automata
 
 import (
+  "github.com/tarm/goserial"
   "io"
   "sync"
   "time"
@@ -28,6 +29,16 @@ func NewArduino(conn io.ReadWriteCloser) *Arduino {
   ar.mutex = &sync.Mutex{}
   ar.Ping()
   return ar
+}
+
+func NewSerial(port string) (*Arduino, error) {
+  c := &serial.Config{Name: port, Baud: 57600}
+  conn, err := serial.OpenPort(c)
+  if err != nil {
+    return nil, err
+  }
+  ar := NewArduino(conn)
+  return ar, nil
 }
 
 func (ar *Arduino) sendCommand(command byte, parameter byte) byte {
