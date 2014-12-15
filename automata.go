@@ -2,6 +2,7 @@ package automata
 
 import (
   "io"
+  "sync"
   "time"
 )
 
@@ -14,8 +15,9 @@ const (
 )
 
 type Arduino struct {
-  conn io.ReadWriteCloser
-  pins map[byte]bool
+  conn  io.ReadWriteCloser
+  pins  map[byte]bool
+  mutex *sync.Mutex
 }
 
 func NewArduino(conn io.ReadWriteCloser) *Arduino {
@@ -23,14 +25,17 @@ func NewArduino(conn io.ReadWriteCloser) *Arduino {
   ar.conn = conn
   ar.pins = make(map[byte]bool)
   time.Sleep(2 * time.Second)
+  ar.mutex = &sync.Mutex{}
   ar.Ping()
   return ar
 }
 
 func (ar *Arduino) sendCommand(command byte, parameter byte) byte {
-  ar.conn.Write([]byte{command, parameter})
   buf := make([]byte, 1)
+  ar.mutex.Lock()
+  ar.conn.Write([]byte{command, parameter})
   ar.conn.Read(buf)
+  ar.mutex.Unlock()
   return buf[0]
 }
 
