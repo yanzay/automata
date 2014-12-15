@@ -13,6 +13,8 @@ const (
   DigitalWriteHigh = 2
   DigitalWriteLow  = 3
   GetTemp          = 4
+
+  RespOK = 0
 )
 
 type Arduino struct {
@@ -53,7 +55,7 @@ func (ar *Arduino) sendCommand(command byte, parameter byte) byte {
 func (ar *Arduino) Ping() {
   resp := ar.sendCommand(Ping, 0)
   a := make([]byte, 1)
-  for resp != 0 {
+  for resp != RespOK {
     ar.conn.Read(a)
     resp = a[0]
   }
