@@ -12,8 +12,6 @@ const (
   DigitalWriteHigh = 2
   DigitalWriteLow  = 3
   GetTemp          = 4
-
-  RespOK = 0
 )
 
 type Message struct {
@@ -25,18 +23,20 @@ type Arduino struct {
   conn      io.ReadWriteCloser
   pins      map[byte]bool
   messages  chan Message
-  responses chan byte
+  responses chan []byte
+  ready     bool
 }
 
 func NewArduino(conn io.ReadWriteCloser) *Arduino {
   ar := new(Arduino)
+  ar.ready = false
   ar.conn = conn
   ar.pins = make(map[byte]bool)
-  ar.messages = make(chan Message, 16)
-  ar.responses = make(chan byte)
+  ar.messages = make(chan Message)
+  ar.responses = make(chan []byte)
   time.Sleep(2 * time.Second)
   go ar.messageHandler()
-  ar.Ping()
+  ar.ready = true
   return ar
 }
 
@@ -47,21 +47,25 @@ func NewSerial(port string) (*Arduino, error) {
     return nil, err
   }
   ar := NewArduino(conn)
+  time.Sleep(2 * time.Second)
   return ar, nil
 }
 
-func (ar *Arduino) sendCommand(command byte, parameter byte) byte {
-  ar.messages <- Message{Command: command, Parameter: parameter}
-  response := <-ar.responses
-  return response
+func (ar *Arduino) sendCommand(command byte, parameter byte) []byte {
+  if ar.ready {
+    ar.messages <- Message{Command: command, Parameter: parameter}
+    response := <-ar.responses
+    return response
+  }
+  return []byte{}
 }
 
 func (ar *Arduino) Ping() {
   resp := ar.sendCommand(Ping, 0)
-  a := make([]byte, 1)
-  for resp != RespOK {
+  a := make([]byte, 4)
+  for resp[0] != 0 || resp[1] != 0 || resp[2] != 0 || resp[3] != 0 {
     ar.conn.Read(a)
-    resp = a[0]
+    resp = a
   }
 }
 
@@ -87,16 +91,16 @@ func (ar *Arduino) Toggle(pin byte) {
   }
 }
 
-func (ar *Arduino) Temp() byte {
+func (ar *Arduino) Temp() []byte {
   return ar.sendCommand(GetTemp, 0)
 }
 
 func (ar *Arduino) messageHandler() {
   for {
     message := <-ar.messages
-    buf := make([]byte, 1)
+    buf := make([]byte, 4)
     ar.conn.Write([]byte{message.Command, message.Parameter})
     ar.conn.Read(buf)
-    ar.responses <- buf[0]
+    ar.responses <- buf
   }
 }
