@@ -3,7 +3,6 @@ package automata
 import (
   "github.com/tarm/goserial"
   "io"
-  "sync"
   "time"
 )
 
@@ -17,18 +16,26 @@ const (
   RespOK = 0
 )
 
+type Message struct {
+  Command   byte
+  Parameter byte
+}
+
 type Arduino struct {
-  conn  io.ReadWriteCloser
-  pins  map[byte]bool
-  mutex *sync.Mutex
+  conn      io.ReadWriteCloser
+  pins      map[byte]bool
+  messages  chan Message
+  responses chan byte
 }
 
 func NewArduino(conn io.ReadWriteCloser) *Arduino {
   ar := new(Arduino)
   ar.conn = conn
   ar.pins = make(map[byte]bool)
+  ar.messages = make(chan Message, 16)
+  ar.responses = make(chan byte)
   time.Sleep(2 * time.Second)
-  ar.mutex = &sync.Mutex{}
+  go ar.messageHandler()
   ar.Ping()
   return ar
 }
@@ -44,12 +51,9 @@ func NewSerial(port string) (*Arduino, error) {
 }
 
 func (ar *Arduino) sendCommand(command byte, parameter byte) byte {
-  buf := make([]byte, 1)
-  ar.mutex.Lock()
-  ar.conn.Write([]byte{command, parameter})
-  ar.conn.Read(buf)
-  ar.mutex.Unlock()
-  return buf[0]
+  ar.messages <- Message{Command: command, Parameter: parameter}
+  response := <-ar.responses
+  return response
 }
 
 func (ar *Arduino) Ping() {
@@ -85,4 +89,14 @@ func (ar *Arduino) Toggle(pin byte) {
 
 func (ar *Arduino) Temp() byte {
   return ar.sendCommand(GetTemp, 0)
+}
+
+func (ar *Arduino) messageHandler() {
+  for {
+    message := <-ar.messages
+    buf := make([]byte, 1)
+    ar.conn.Write([]byte{message.Command, message.Parameter})
+    ar.conn.Read(buf)
+    ar.responses <- buf[0]
+  }
 }
