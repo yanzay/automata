@@ -46,7 +46,6 @@ func NewArduino(conn io.ReadWriteCloser) *Arduino {
   ar.pins = make(map[byte]bool)
   log.Debug("Launching messageHandler in goroutine")
   go ar.messageHandler()
-  log.Debug("Sleeping for 2 seconds...")
   log.Debug("Pinging...")
   ar.Ping()
   return ar
@@ -74,6 +73,7 @@ func (ar *Arduino) sendCommand(command byte, parameter byte) []byte {
 }
 
 func (ar *Arduino) Ping() {
+  log.Debug("Sleeping for 2 seconds...")
   time.Sleep(2 * time.Second)
   ar.sendCommand(Ping, 0)
 }
