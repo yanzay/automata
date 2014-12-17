@@ -19,6 +19,7 @@ void setup() {
   Serial.begin(57600);
   sensors.begin();
   sensors.getAddress(insideThermometer, 0);
+  sensors.setResolution(insideThermometer, 9);
 }
 
 void loop() {
@@ -32,27 +33,51 @@ void loop() {
     switch (command) {
       case SET_DIGITAL_OUT:
         pinMode(parameter, OUTPUT);
-        Serial.write(0);
+        writeByte(1);
         break;
       case DIGITAL_WRITE_HIGH:
         digitalWrite(parameter, HIGH);
-        Serial.write(0);
+        writeByte(2);
         break;
       case DIGITAL_WRITE_LOW:
         digitalWrite(parameter, LOW);
-        Serial.write(0);
+        writeByte(3);
         break;
       case READ_TEMP:
-        byte temp;
+        float temp;
         sensors.requestTemperatures();
-        temp = byte(sensors.getTempC(insideThermometer));
-        Serial.write(temp);
+        temp = sensors.getTempC(insideThermometer);
+        writeFloat(temp);
         break;
       case PING:
-        Serial.write(0);
+        writeByte(0);
         break;
       default:
-        Serial.write(1);
+        writeByte(1);
+        break;
     }
   }
+}
+
+void writeResponse(byte b[]) {
+  Serial.write(b, 4);
+}
+
+void writeByte(byte resp) {
+  byte array[4];
+  array[0] = 0;
+  array[1] = 0;
+  array[2] = 0;
+  array[3] = resp;
+  writeResponse(array);
+}
+
+void writeFloat(float resp) {
+  union u_tag {
+    byte b[4];
+    float fval;
+  } u;
+
+  u.fval = resp;
+  writeResponse(u.b);
 }
