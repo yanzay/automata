@@ -2,14 +2,19 @@ package automata
 
 import (
   "bufio"
+  "errors"
   "github.com/op/go-logging"
   "github.com/tarm/goserial"
   "io"
+  "net"
   "os"
   "time"
 )
 
 const (
+  SerialArduino   = 0
+  EthernetArduino = 1
+
   Ping             = 0
   SetDigitalOutput = 1
   DigitalWriteHigh = 2
@@ -38,7 +43,28 @@ func initLogger() {
   logging.SetBackend(backend1Leveled)
 }
 
-func NewArduino(conn io.ReadWriteCloser) *Arduino {
+func New(t byte, addr string) (*Arduino, error) {
+  var err error
+  var conn io.ReadWriteCloser
+  initLogger()
+  switch t {
+  case SerialArduino:
+    c := &serial.Config{Name: addr, Baud: 57600}
+    conn, err = serial.OpenPort(c)
+  case EthernetArduino:
+    conn, err = net.Dial("tcp", addr)
+  default:
+    return nil, errors.New("Undefined arduino connection type.")
+  }
+  if err != nil {
+    log.Debug("Error connecting to arduino on %s, error: %v", addr, err)
+    return nil, err
+  }
+  ar := newArduino(conn)
+  return ar, nil
+}
+
+func newArduino(conn io.ReadWriteCloser) *Arduino {
   log.Debug("Instantiate arduino on connection %v", conn)
   ar := new(Arduino)
   log.Debug("Arduino isn't ready yet.")
@@ -51,19 +77,8 @@ func NewArduino(conn io.ReadWriteCloser) *Arduino {
   return ar
 }
 
-func NewSerial(port string) (*Arduino, error) {
-  initLogger()
-  log.Debug("Ititializing arduino on serial port %s\n", port)
-  c := &serial.Config{Name: port, Baud: 57600}
-  log.Debug("Opening serial port")
-  conn, err := serial.OpenPort(c)
-  if err != nil {
-    log.Debug("Error opening serial port %v\n", err)
-    return nil, err
-  }
-  ar := NewArduino(conn)
-  log.Debug("Arduino fully initialized.")
-  return ar, nil
+func (ar *Arduino) Close() {
+  ar.conn.Close()
 }
 
 func (ar *Arduino) sendCommand(command byte, parameter byte) []byte {

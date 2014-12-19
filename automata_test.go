@@ -12,8 +12,16 @@ func TestNewSerial(t *testing.T) {
   }
 }
 
+func TestNewEthernet(t *testing.T) {
+  _, err := NewEthernet("169.254.68.110:13666")
+  if err != nil {
+    t.Error("Should create arduino via ethernet")
+  }
+}
+
 func TestSendCommand(t *testing.T) {
-  ar, _ := NewSerial("/dev/tty.usbmodem1411")
+  // ar, _ := NewSerial("/dev/tty.usbmodem1421")
+  ar, _ := NewEthernet("169.254.68.110:13666")
   ar.SetDigitalOutput(12)
   for i := 0; i < 10; i++ {
     go func() {
