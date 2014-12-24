@@ -10,7 +10,6 @@ Usage:
 package main
 
 import (
-  "github.com/tarm/goserial"
   "github.com/yanzay/automata"
   "fmt"
 )
