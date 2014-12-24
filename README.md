@@ -16,13 +16,9 @@ import (
 )
 
 func main() {
-  c := &serial.Config{Name: "/dev/tty.usbmodem1411", Baud: 57600}
-  conn, err := serial.OpenPort(c)
-  if err != nil {
-    fmt.Println("Error connecting to arduino")
-    return
-  }
-  ar := automata.NewArduino(conn)
+  ar := automata.New(automata.SerialArduino, "/dev/tty.usbmodem1411")
+  // or
+  // ar := automata.New(automata.EthernetArduino, "192.168.0.13:13666")
   ar.SetDigitalOutput(13)
   for {
     ar.Toggle(13)
