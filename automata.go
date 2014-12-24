@@ -52,7 +52,7 @@ func New(t byte, addr string) (*Arduino, error) {
     c := &serial.Config{Name: addr, Baud: 57600}
     conn, err = serial.OpenPort(c)
   case EthernetArduino:
-    conn, err = net.Dial("tcp", addr)
+    conn, err = net.DialTimeout("tcp", addr, 5 * time.Second)
   default:
     return nil, errors.New("Undefined arduino connection type.")
   }
@@ -82,6 +82,7 @@ func (ar *Arduino) Close() {
 }
 
 func (ar *Arduino) sendCommand(command byte, parameter byte) []byte {
+  log.Debug("sending %v, %v", command, parameter)
   ar.messages <- Message{Command: command, Parameter: parameter}
   response := <-ar.responses
   return response
