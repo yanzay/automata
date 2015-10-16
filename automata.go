@@ -7,6 +7,9 @@ import (
 	"net"
 	"os"
 	"time"
+
+	logging "github.com/op/go-logging"
+	serial "github.com/tarm/goserial"
 )
 
 const (
